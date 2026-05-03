@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import MonthRow from '../MonthRow';
 import { CATS, Transaction, fmt, catOf, todayStr } from '@/lib/types';
 
 type MultiItem = { id: number; date: string; cat: string; amount: string; memo: string; };
+type ReceiptState = 'idle' | 'reading' | 'done' | 'error';
 
 type Props = {
   cy: number; cm: number; moveMonth: (d: number) => void;
@@ -20,15 +21,80 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
   const [cat, setCat] = useState(CATS[0].name);
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
+  const [receiptState, setReceiptState] = useState<ReceiptState>('idle');
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
   const [multiItems, setMultiItems] = useState<MultiItem[]>([
     { id: 1, date: todayStr(), cat: CATS[0].name, amount: '', memo: '' }
   ]);
+
+  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const res = reader.result as string; resolve(res.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleReceiptFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) { showToast('画像ファイルを選択してください'); return; }
+    setReceiptState('reading');
+    setReceiptPreview(URL.createObjectURL(file));
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await fetch('/api/read-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.date) setDate(data.date);
+      if (data.amount) setAmount(String(data.amount));
+      if (data.memo) setMemo(data.memo);
+      if (data.cat && CATS.find(c => c.name === data.cat)) setCat(data.cat);
+      setReceiptState('done');
+      showToast('読み取り完了。内容を確認してください');
+    } catch {
+      setReceiptState('error');
+      showToast('読み取りに失敗しました。手動で入力してください');
+    }
+  };
+
+  const handleMultiReceiptFiles = async (files: FileList) => {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (!imageFiles.length) { showToast('画像ファイルを選択してください'); return; }
+    showToast(`${imageFiles.length}枚を読み取り中...`);
+    const results: MultiItem[] = [];
+    for (const file of imageFiles) {
+      try {
+        const base64 = await fileToBase64(file);
+        const res = await fetch('/api/read-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
+        });
+        const data = await res.json();
+        results.push({
+          id: Date.now() + Math.random(),
+          date: data.date || todayStr(),
+          cat: (data.cat && CATS.find(c => c.name === data.cat)) ? data.cat : CATS[0].name,
+          amount: data.amount ? String(data.amount) : '',
+          memo: data.memo || '',
+        });
+      } catch {
+        results.push({ id: Date.now() + Math.random(), date: todayStr(), cat: CATS[0].name, amount: '', memo: '' });
+      }
+    }
+    setMultiItems(results);
+    showToast(`${results.length}枚を読み取りました。内容を確認してください`);
+  };
 
   const handleSingle = () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { showToast('金額を入力してください'); return; }
     addTx({ amount: amt, memo, cat, date: date || todayStr() });
-    setAmount(''); setMemo('');
+    setAmount(''); setMemo(''); setReceiptState('idle'); setReceiptPreview(null);
   };
 
   const handleMulti = () => {
@@ -57,13 +123,38 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
       <div className="sec" style={{ marginBottom: 14 }}>
         {mode === 'single' ? (
           <>
-            <div className="upload-area" onClick={() => showToast('レシートアップロード機能（準備中）')}>
-              <div className="upload-icon">
-                <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-              </div>
-              <div className="upload-title">レシートをアップロード</div>
-              <div className="upload-sub">タップまたはドラッグ＆ドロップ</div>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptFile(f); e.target.value = ''; }} />
+
+            <div
+              className="upload-area"
+              style={receiptState === 'done' ? { borderColor: '#2563eb', background: '#f0f4ff' } : receiptState === 'reading' ? { opacity: .7 } : {}}
+              onClick={() => receiptState !== 'reading' && fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleReceiptFile(f); }}
+            >
+              {receiptPreview ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={receiptPreview} alt="レシート" style={{ width: 56, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
+                  <div style={{ textAlign: 'left' }}>
+                    {receiptState === 'reading' && <div className="upload-title">AIが読み取り中...</div>}
+                    {receiptState === 'done'    && <div className="upload-title" style={{ color: '#2563eb' }}>読み取り完了</div>}
+                    {receiptState === 'error'   && <div className="upload-title" style={{ color: '#ef4444' }}>読み取り失敗</div>}
+                    <div className="upload-sub">別のレシートに変えるには再度タップ</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="upload-icon">
+                    <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+                  </div>
+                  <div className="upload-title">レシートをアップロード</div>
+                  <div className="upload-sub">タップまたはドラッグ＆ドロップでAIが自動入力</div>
+                </>
+              )}
             </div>
+
             <div className="form-sec-title">支出を追加</div>
             <label className="flbl">日付</label>
             <input className="finput" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -79,16 +170,24 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
           </>
         ) : (
           <>
-            <div className="upload-area" onClick={() => showToast('複数レシートアップロード機能（準備中）')}>
+            <input ref={multiFileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+              onChange={e => { if (e.target.files?.length) handleMultiReceiptFiles(e.target.files); e.target.value = ''; }} />
+
+            <div className="upload-area"
+              onClick={() => multiFileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) handleMultiReceiptFiles(e.dataTransfer.files); }}
+            >
               <div className="upload-icon">
                 <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </div>
               <div className="upload-title">複数のレシートを一度に選択</div>
-              <div className="upload-sub">タップして複数選択 / ドラッグ＆ドロップ</div>
+              <div className="upload-sub">タップして複数選択 / ドラッグ＆ドロップでAIが自動入力</div>
             </div>
+
             <div className="sec-hd">
               <span className="form-sec-title">支出リスト</span>
-              <span className="sec-note">0件入力済み</span>
+              <span className="sec-note">{multiItems.filter(m => parseFloat(m.amount) > 0).length}件入力済み</span>
             </div>
             {multiItems.map((item, i) => (
               <div key={item.id} className="multi-item">
@@ -120,7 +219,7 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
                 </div>
               </div>
             ))}
-            <button className="add-item-btn" onClick={addMultiItem}>+ 項目を追加</button>
+            <button className="add-item-btn" onClick={addMultiItem}>+ 項目を手動追加</button>
             <button className="submit-btn" onClick={handleMulti}>まとめて追加する</button>
           </>
         )}
