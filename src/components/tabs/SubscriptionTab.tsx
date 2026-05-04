@@ -71,7 +71,7 @@ export default function SubscriptionTab({ subscriptions, addSubscription, update
       {!showForm && (
         <button
           onClick={openAdd}
-          style={{ width: '100%', padding: 13, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}
+          style={{ width: '100%', padding: 13, background: '#14532d', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}
         >
           + サブスクを追加
         </button>
@@ -130,7 +130,7 @@ export default function SubscriptionTab({ subscriptions, addSubscription, update
             <button onClick={() => setShowForm(false)} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
               キャンセル
             </button>
-            <button onClick={handleSave} style={{ padding: 12, border: 'none', borderRadius: 10, background: '#2563eb', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={handleSave} style={{ padding: 12, border: 'none', borderRadius: 10, background: '#14532d', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               {editId !== null ? '更新する' : '登録する'}
             </button>
           </div>
