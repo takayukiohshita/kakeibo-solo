@@ -25,7 +25,7 @@ export default function TrendTab({ cy, cm, moveMonth, monthTxs, budgets }: Props
       data: {
         labels: data.map(d => d.ym),
         datasets: [
-          { label: '実績', data: data.map(d => d.exp || null), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.07)', tension: .35, pointRadius: 4, pointBackgroundColor: '#2563eb', fill: true, borderWidth: 2 },
+          { label: '実績', data: data.map(d => d.exp || null), borderColor: '#14532d', backgroundColor: 'rgba(20,83,45,0.07)', tension: .35, pointRadius: 4, pointBackgroundColor: '#14532d', fill: true, borderWidth: 2 },
           { label: '予算', data: data.map(() => tb), borderColor: '#9ca3af', borderDash: [6, 4], tension: 0, pointRadius: 0, fill: false, borderWidth: 1.5 },
         ],
       },
@@ -49,7 +49,7 @@ export default function TrendTab({ cy, cm, moveMonth, monthTxs, budgets }: Props
         <div className="sec-hd">
           <span className="sec-title">月別支出の推移</span>
           <div className="trend-legend">
-            <span className="tl-item"><div className="tl-line" style={{ background: '#2563eb' }} />実績</span>
+            <span className="tl-item"><div className="tl-line" style={{ background: '#14532d' }} />実績</span>
             <span className="tl-item"><div className="tl-line" style={{ background: '#9ca3af', borderTop: '2px dashed #9ca3af', height: 0 }} />予算</span>
           </div>
         </div>
