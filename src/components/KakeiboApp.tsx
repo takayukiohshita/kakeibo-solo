@@ -20,6 +20,9 @@ const TABS = [
 
 export type TabId = typeof TABS[number]['id'];
 
+// 二人家計の月別負担額: { "2026-05": 132827 }
+type SharedBurden = Record<string, number>;
+
 export default function KakeiboApp() {
   const now = new Date();
   const [activeTab, setActiveTab] = useState<TabId>('summary');
@@ -30,6 +33,7 @@ export default function KakeiboApp() {
 
   const [txs, setTxs, txsLoaded] = useLocalStorage<Transaction[]>('kakeibo_txs', []);
   const [budgets, setBudgets, budgetsLoaded] = useLocalStorage<Budget>('kakeibo_budgets', DEFAULT_BUDGETS);
+  const [sharedBurden, setSharedBurden, burdenLoaded] = useLocalStorage<SharedBurden>('kakeibo_shared_burden', {});
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -51,7 +55,7 @@ export default function KakeiboApp() {
       const maxId = prev.length ? Math.max(...prev.map(t => t.id)) : 0;
       return [...prev, { ...tx, id: maxId + 1 }];
     });
-    showToast('追加しました');
+    showToast(tx.isIncome ? '収入を追加しました' : '追加しました');
   }, [setTxs, showToast]);
 
   const addTxBulk = useCallback((items: Omit<Transaction, 'id'>[]) => {
@@ -72,18 +76,23 @@ export default function KakeiboApp() {
     showToast('予算を保存しました');
   }, [setBudgets, showToast]);
 
+  const saveSharedBurden = useCallback((key: string, amount: number) => {
+    setSharedBurden(prev => ({ ...prev, [key]: amount }));
+    showToast('二人家計の負担額を保存しました');
+  }, [setSharedBurden, showToast]);
+
   const monthTxs = txs.filter(t => {
     const d = new Date(t.date);
     return d.getFullYear() === cy && d.getMonth() + 1 === cm && !t.isIncome;
   });
 
-  const shared = { cy, cm, moveMonth, monthTxs, txs, budgets, showToast, delTx };
+  const burdenKey = `${cy}-${String(cm).padStart(2, '0')}`;
+  const shared = { cy, cm, moveMonth, monthTxs, txs, budgets, showToast, delTx, sharedBurden, burdenKey, saveSharedBurden };
 
-  if (!txsLoaded || !budgetsLoaded) return null;
+  if (!txsLoaded || !budgetsLoaded || !burdenLoaded) return null;
 
   return (
     <div className="app">
-      {/* Header */}
       <header className="hdr">
         <div className="hdr-logo">
           <div className="hdr-icon">
@@ -99,7 +108,6 @@ export default function KakeiboApp() {
         <div className="solo-badge">ひとり暮らし</div>
       </header>
 
-      {/* Nav */}
       <nav className="nav">
         {TABS.map(tab => (
           <button
@@ -113,7 +121,6 @@ export default function KakeiboApp() {
         ))}
       </nav>
 
-      {/* Pages */}
       <main className="pg">
         {activeTab === 'summary' && <SummaryTab {...shared} />}
         {activeTab === 'input'   && <InputTab {...shared} addTx={addTx} addTxBulk={addTxBulk} />}
@@ -123,7 +130,6 @@ export default function KakeiboApp() {
         {activeTab === 'report'  && <ReportTab {...shared} />}
       </main>
 
-      {/* Toast */}
       <div className={`toast${toastVisible ? ' show' : ''}`}>{toast}</div>
     </div>
   );
