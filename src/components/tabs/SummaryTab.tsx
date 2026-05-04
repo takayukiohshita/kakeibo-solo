@@ -135,7 +135,7 @@ export default function SummaryTab({ cy, cm, moveMonth, monthTxs, txs, budgets, 
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {t.memo || t.cat}
-                            {t.subscriptionId ? <span style={{ marginLeft: 6, fontSize: 10, background: '#eff6ff', color: '#2563eb', padding: '1px 5px', borderRadius: 4 }}>サブスク</span> : null}
+                            {t.subscriptionId ? <span style={{ marginLeft: 6, fontSize: 10, background: '#f0fdf4', color: '#14532d', padding: '1px 5px', borderRadius: 4 }}>サブスク</span> : null}
                           </div>
                           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{ds}</div>
                         </div>
