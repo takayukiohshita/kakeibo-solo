@@ -117,7 +117,7 @@ export default function KakeiboApp() {
       <main className="pg">
         {activeTab === 'summary' && <SummaryTab {...shared} />}
         {activeTab === 'input'   && <InputTab {...shared} addTx={addTx} addTxBulk={addTxBulk} delTx={delTx} />}
-        {activeTab === 'history' && <HistoryTab {...shared} />}
+        {activeTab === 'history' && <HistoryTab {...shared} delTx={delTx} />}
         {activeTab === 'budget'  && <BudgetTab {...shared} saveBudgets={saveBudgets} />}
         {activeTab === 'trend'   && <TrendTab {...shared} />}
         {activeTab === 'report'  && <ReportTab {...shared} />}
