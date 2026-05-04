@@ -150,7 +150,7 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, txs, addTx, addT
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptFile(f); e.target.value = ''; }} />
                 <div
                   className="upload-area"
-                  style={receiptState === 'done' ? { borderColor: '#2563eb', background: '#f0f4ff' } : receiptState === 'reading' ? { opacity: .7 } : {}}
+                  style={receiptState === 'done' ? { borderColor: '#14532d', background: '#f0fdf4' } : receiptState === 'reading' ? { opacity: .7 } : {}}
                   onClick={() => receiptState !== 'reading' && fileInputRef.current?.click()}
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleReceiptFile(f); }}
@@ -161,7 +161,7 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, txs, addTx, addT
                       <img src={receiptPreview} alt="レシート" style={{ width: 56, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
                       <div style={{ textAlign: 'left' }}>
                         {receiptState === 'reading' && <div className="upload-title">AIが読み取り中...</div>}
-                        {receiptState === 'done'    && <div className="upload-title" style={{ color: '#2563eb' }}>読み取り完了</div>}
+                        {receiptState === 'done'    && <div className="upload-title" style={{ color: '#14532d' }}>読み取り完了</div>}
                         {receiptState === 'error'   && <div className="upload-title" style={{ color: '#ef4444' }}>読み取り失敗</div>}
                         <div className="upload-sub">別のレシートに変えるには再度タップ</div>
                       </div>
@@ -195,7 +195,7 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, txs, addTx, addT
             <input className="finput" type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder={txType === 'exp' ? '例）イオン、ランチ等' : '例）5月給与'} />
             <button
               className="submit-btn"
-              style={{ background: txType === 'inc' ? '#1D9E75' : '#2563eb' }}
+              style={{ background: txType === 'inc' ? '#1D9E75' : '#14532d' }}
               onClick={handleSingle}
             >+ 追加する</button>
           </>
