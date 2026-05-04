@@ -85,6 +85,7 @@ body {
 .finput { width: 100%; padding: 11px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1a1a2e; background: #fff; transition: border-color .15s; min-width: 0; box-sizing: border-box; }
 .finput:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 input[type="date"].finput { width: 100%; padding: 11px 12px; font-size: 14px; -webkit-appearance: none; appearance: none; }
+input[type="month"].finput { width: 100%; padding: 11px 12px; font-size: 14px; -webkit-appearance: none; appearance: none; }
 .submit-btn { width: 100%; padding: 13px; background: #2563eb; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 12px; transition: background .15s; }
 .submit-btn:hover { background: #1d4ed8; }
 .submit-btn:active { background: #1e40af; }
