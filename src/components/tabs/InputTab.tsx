@@ -16,7 +16,7 @@ type Props = {
   [key: string]: unknown;
 };
 
-export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk, delTx, showToast }: Props) {
+export default function InputTab({ cy, cm, moveMonth, monthTxs, txs, addTx, addTxBulk, delTx, showToast }: Props) {
   const [mode, setMode] = useState<'single' | 'multi'>('single');
   const [date, setDate] = useState(todayStr());
   const [cat, setCat] = useState(CATS[0].name);
