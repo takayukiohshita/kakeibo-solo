@@ -204,18 +204,12 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
                   <span className="multi-no">#{i + 1}</span>
                   <button className="multi-close" onClick={() => removeMultiItem(item.id)}>✕</button>
                 </div>
-                <div className="frow2">
-                  <div>
-                    <label className="flbl">日付</label>
-                    <input className="finput" type="date" value={item.date} onChange={e => updateMulti(item.id, 'date', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="flbl">カテゴリ</label>
-                    <select className="finput" value={item.cat} onChange={e => updateMulti(item.id, 'cat', e.target.value)}>
-                      {CATS.map(c => <option key={c.name}>{c.name}</option>)}
-                    </select>
-                  </div>
-                </div>
+                <label className="flbl">日付</label>
+                <input className="finput" type="date" value={item.date} onChange={e => updateMulti(item.id, 'date', e.target.value)} />
+                <label className="flbl" style={{ marginTop: 8 }}>カテゴリ</label>
+                <select className="finput" value={item.cat} onChange={e => updateMulti(item.id, 'cat', e.target.value)}>
+                  {CATS.map(c => <option key={c.name}>{c.name}</option>)}
+                </select>
                 <div className="frow2" style={{ marginTop: 8 }}>
                   <div>
                     <label className="flbl">金額（円）</label>
