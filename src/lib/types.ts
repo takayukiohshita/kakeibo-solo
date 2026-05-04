@@ -5,6 +5,7 @@ export type Transaction = {
   cat: string;
   date: string;
   isIncome?: boolean;
+  subscriptionId?: number; // サブスクから自動生成された場合のID
 };
 
 export type Budget = Record<string, number>;
@@ -12,6 +13,18 @@ export type Budget = Record<string, number>;
 export type Category = {
   name: string;
   color: string;
+};
+
+// サブスク定義
+export type Subscription = {
+  id: number;
+  name: string;       // サービス名（例: Netflix）
+  amount: number;     // 月額
+  cat: string;        // カテゴリ
+  dayOfMonth: number; // 引き落とし日（例: 1〜28）
+  startYm: string;    // 開始年月 "2026-05"
+  endYm: string | null; // 終了年月（null=無期限）
+  memo: string;
 };
 
 export const CATS: Category[] = [
@@ -27,12 +40,14 @@ export const CATS: Category[] = [
   { name: '保険料', color: '#9333ea' },
   { name: '旅行費', color: '#c2410c' },
   { name: '筋トレ', color: '#1d4ed8' },
+  { name: '投資',   color: '#0f766e' },
 ];
 
 export const DEFAULT_BUDGETS: Budget = {
   食費: 35000, 日用品: 20000, 衣服: 20000, 美容品: 20000,
   交際費: 15000, 医療費: 20000, 教育費: 20000, 交通費: 10000,
   通信費: 8000, 保険料: 85000, 旅行費: 20000, 筋トレ: 15000,
+  投資: 30000,
 };
 
 export const HIST_DATA: { ym: string; exp: number }[] = [];
