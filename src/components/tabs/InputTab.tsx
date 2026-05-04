@@ -99,7 +99,7 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
   const handleSingle = () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { showToast('金額を入力してください'); return; }
-    addTx({ amount: amt, memo, cat, date: date || todayStr() });
+    addTx({ amount: amt, memo, cat, date: date || todayStr(), isIncome: txType === 'inc' });
     setAmount(''); setMemo(''); setReceiptState('idle'); setReceiptPreview(null);
   };
 
@@ -114,6 +114,8 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
   const removeMultiItem = (id: number) => setMultiItems(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev);
   const updateMulti = (id: number, key: keyof MultiItem, val: string) =>
     setMultiItems(prev => prev.map(m => m.id === id ? { ...m, [key]: val } : m));
+  const [txType, setTxType] = useState<'exp' | 'inc'>('exp');
+  const INC_CATS = ['給与', '副業', 'ボーナス', 'その他収入'];
 
   const sorted = [...monthTxs].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -129,50 +131,73 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
       <div className="sec" style={{ marginBottom: 14 }}>
         {mode === 'single' ? (
           <>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptFile(f); e.target.value = ''; }} />
-
-            <div
-              className="upload-area"
-              style={receiptState === 'done' ? { borderColor: '#2563eb', background: '#f0f4ff' } : receiptState === 'reading' ? { opacity: .7 } : {}}
-              onClick={() => receiptState !== 'reading' && fileInputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleReceiptFile(f); }}
-            >
-              {receiptPreview ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={receiptPreview} alt="レシート" style={{ width: 56, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                  <div style={{ textAlign: 'left' }}>
-                    {receiptState === 'reading' && <div className="upload-title">AIが読み取り中...</div>}
-                    {receiptState === 'done'    && <div className="upload-title" style={{ color: '#2563eb' }}>読み取り完了</div>}
-                    {receiptState === 'error'   && <div className="upload-title" style={{ color: '#ef4444' }}>読み取り失敗</div>}
-                    <div className="upload-sub">別のレシートに変えるには再度タップ</div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="upload-icon">
-                    <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-                  </div>
-                  <div className="upload-title">レシートをアップロード</div>
-                  <div className="upload-sub">タップまたはドラッグ＆ドロップでAIが自動入力</div>
-                </>
-              )}
+            {/* 支出/収入 切り替え */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f3f4f6', borderRadius: 10, padding: 3, marginBottom: 14 }}>
+              <button
+                style={{ padding: '9px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderRadius: 8, transition: 'all .15s', background: txType === 'exp' ? '#D85A30' : 'none', color: txType === 'exp' ? '#fff' : '#6b7280' }}
+                onClick={() => { setTxType('exp'); setCat(CATS[0].name); }}
+              >支出</button>
+              <button
+                style={{ padding: '9px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderRadius: 8, transition: 'all .15s', background: txType === 'inc' ? '#1D9E75' : 'none', color: txType === 'inc' ? '#fff' : '#6b7280' }}
+                onClick={() => { setTxType('inc'); setCat(INC_CATS[0]); }}
+              >収入</button>
             </div>
 
-            <div className="form-sec-title">支出を追加</div>
+            {/* レシートアップロード（支出のみ） */}
+            {txType === 'exp' && (
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptFile(f); e.target.value = ''; }} />
+                <div
+                  className="upload-area"
+                  style={receiptState === 'done' ? { borderColor: '#2563eb', background: '#f0f4ff' } : receiptState === 'reading' ? { opacity: .7 } : {}}
+                  onClick={() => receiptState !== 'reading' && fileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleReceiptFile(f); }}
+                >
+                  {receiptPreview ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={receiptPreview} alt="レシート" style={{ width: 56, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
+                      <div style={{ textAlign: 'left' }}>
+                        {receiptState === 'reading' && <div className="upload-title">AIが読み取り中...</div>}
+                        {receiptState === 'done'    && <div className="upload-title" style={{ color: '#2563eb' }}>読み取り完了</div>}
+                        {receiptState === 'error'   && <div className="upload-title" style={{ color: '#ef4444' }}>読み取り失敗</div>}
+                        <div className="upload-sub">別のレシートに変えるには再度タップ</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="upload-icon">
+                        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+                      </div>
+                      <div className="upload-title">レシートをアップロード</div>
+                      <div className="upload-sub">タップまたはドラッグ＆ドロップでAIが自動入力</div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="form-sec-title">{txType === 'exp' ? '支出' : '収入'}を追加</div>
             <label className="flbl">日付</label>
             <input className="finput" type="date" value={date} onChange={e => setDate(e.target.value)} />
-            <label className="flbl">カテゴリ</label>
+            <label className="flbl">{txType === 'exp' ? 'カテゴリ' : '種別'}</label>
             <select className="finput" value={cat} onChange={e => setCat(e.target.value)}>
-              {CATS.map(c => <option key={c.name}>{c.name}</option>)}
+              {txType === 'exp'
+                ? CATS.map(c => <option key={c.name}>{c.name}</option>)
+                : INC_CATS.map(c => <option key={c}>{c}</option>)
+              }
             </select>
             <label className="flbl">金額（円）</label>
             <input className="finput" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" />
             <label className="flbl">メモ（任意）</label>
-            <input className="finput" type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder="例）イオン、ランチ等" />
-            <button className="submit-btn" onClick={handleSingle}>+ 追加する</button>
+            <input className="finput" type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder={txType === 'exp' ? '例）イオン、ランチ等' : '例）5月給与'} />
+            <button
+              className="submit-btn"
+              style={{ background: txType === 'inc' ? '#1D9E75' : '#2563eb' }}
+              onClick={handleSingle}
+            >+ 追加する</button>
           </>
         ) : (
           <>
@@ -232,24 +257,33 @@ export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk
         <div className="sec-hd">
           <span className="sec-title">{cy}年{cm}月の入力一覧</span>
         </div>
-        {sorted.length === 0 ? (
-          <div className="empty-msg">取引がありません</div>
-        ) : sorted.map(t => {
-          const c = catOf(t.cat);
-          const d = new Date(t.date);
-          const ds = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-          return (
-            <div key={t.id} className="tx-item">
-              <div className="cat-dot" style={{ background: c.color }} />
-              <div className="tx-info">
-                <div className="tx-name">{t.memo || t.cat}</div>
-                <div className="tx-meta">{ds} <span style={{ color: c.color, fontWeight: 600 }}>{t.cat}</span></div>
+        {(() => {
+          const allTxs = [...txs.filter(t => {
+            const d = new Date(t.date);
+            return d.getFullYear() === cy && d.getMonth() + 1 === cm;
+          })].sort((a, b) => b.date.localeCompare(a.date));
+          if (!allTxs.length) return <div className="empty-msg">取引がありません</div>;
+          return allTxs.map(t => {
+            const c = t.isIncome ? { color: '#1D9E75' } : catOf(t.cat);
+            const d = new Date(t.date);
+            const ds = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+            return (
+              <div key={t.id} className="tx-item">
+                <div className="cat-dot" style={{ background: c.color }} />
+                <div className="tx-info">
+                  <div className="tx-name">{t.memo || t.cat}</div>
+                  <div className="tx-meta">
+                    {ds} <span style={{ color: c.color, fontWeight: 600 }}>{t.isIncome ? `収入・${t.cat}` : t.cat}</span>
+                  </div>
+                </div>
+                <div className="tx-amt" style={{ color: t.isIncome ? '#1D9E75' : '#1a1a2e' }}>
+                  {t.isIncome ? '+' : ''}{fmt(t.amount)}
+                </div>
+                <button className="icon-btn del" onClick={() => { if (confirm('この取引を削除しますか？')) delTx(t.id); }}>✕</button>
               </div>
-              <div className="tx-amt">{fmt(t.amount)}</div>
-              <button className="icon-btn del" onClick={() => { if (confirm('この取引を削除しますか？')) delTx(t.id); }}>✕</button>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
     </>
   );
