@@ -7,6 +7,7 @@ type Props = {
   cy: number; cm: number; moveMonth: (d: number) => void;
   monthTxs: Transaction[]; txs: Transaction[]; budgets: Budget;
   delTx: (id: number) => void;
+  [key: string]: unknown;
 };
 
 export default function HistoryTab({ cy, cm, moveMonth, monthTxs, delTx }: Props) {
