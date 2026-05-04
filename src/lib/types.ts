@@ -35,18 +35,7 @@ export const DEFAULT_BUDGETS: Budget = {
   通信費: 8000, 保険料: 85000, 旅行費: 20000, 筋トレ: 15000,
 };
 
-export const HIST_DATA = [
-  { ym: '2024/10', exp: 198327 }, { ym: '2024/11', exp: 302110 },
-  { ym: '2024/12', exp: 289021 }, { ym: '2025/01', exp: 258786 },
-  { ym: '2025/02', exp: 259539 }, { ym: '2025/03', exp: 320807 },
-  { ym: '2025/04', exp: 237595 }, { ym: '2025/05', exp: 312324 },
-  { ym: '2025/06', exp: 322329 }, { ym: '2025/07', exp: 335674 },
-  { ym: '2025/08', exp: 420980 }, { ym: '2025/09', exp: 420749 },
-  { ym: '2025/10', exp: 572001 }, { ym: '2025/11', exp: 320602 },
-  { ym: '2025/12', exp: 378772 }, { ym: '2026/01', exp: 431916 },
-  { ym: '2026/02', exp: 342919 }, { ym: '2026/03', exp: 355586 },
-  { ym: '2026/04', exp: 298000 },
-];
+export const HIST_DATA: { ym: string; exp: number }[] = [];
 
 export function fmt(n: number): string {
   return '¥' + Math.round(n).toLocaleString('ja-JP');
