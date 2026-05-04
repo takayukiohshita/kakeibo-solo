@@ -1,252 +1,114 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import MonthRow from '../MonthRow';
-import { CATS, Transaction, fmt, catOf, todayStr } from '@/lib/types';
-
-type MultiItem = { id: number; date: string; cat: string; amount: string; memo: string; };
-type ReceiptState = 'idle' | 'reading' | 'done' | 'error';
+import { CATS, Transaction, Budget, fmt, catOf, catMap } from '@/lib/types';
 
 type Props = {
   cy: number; cm: number; moveMonth: (d: number) => void;
-  monthTxs: Transaction[]; txs: Transaction[]; budgets: Record<string, number>;
-  addTx: (tx: Omit<Transaction, 'id'>) => void;
-  addTxBulk: (items: Omit<Transaction, 'id'>[]) => void;
+  monthTxs: Transaction[]; txs: Transaction[]; budgets: Budget;
   delTx: (id: number) => void;
-  showToast: (msg: string) => void;
 };
 
-export default function InputTab({ cy, cm, moveMonth, monthTxs, addTx, addTxBulk, delTx, showToast }: Props) {
-  const [mode, setMode] = useState<'single' | 'multi'>('single');
-  const [date, setDate] = useState(todayStr());
-  const [cat, setCat] = useState(CATS[0].name);
-  const [amount, setAmount] = useState('');
-  const [memo, setMemo] = useState('');
-  const [receiptState, setReceiptState] = useState<ReceiptState>('idle');
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const multiFileInputRef = useRef<HTMLInputElement>(null);
-  const [multiItems, setMultiItems] = useState<MultiItem[]>([
-    { id: 1, date: todayStr(), cat: CATS[0].name, amount: '', memo: '' }
-  ]);
-
-  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const res = reader.result as string; resolve(res.split(',')[1]); };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+export default function HistoryTab({ cy, cm, moveMonth, monthTxs, delTx }: Props) {
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  const exp = monthTxs.reduce((s, t) => s + t.amount, 0);
+  const cm2 = catMap(monthTxs);
+  const first = new Date(cy, cm - 1, 1);
+  const last = new Date(cy, cm, 0);
+  const startDay = first.getDay();
+  const byDay: Record<number, { total: number; cats: string[] }> = {};
+  monthTxs.forEach(t => {
+    const d = new Date(t.date).getDate();
+    if (!byDay[d]) byDay[d] = { total: 0, cats: [] };
+    byDay[d].total += t.amount;
+    byDay[d].cats.push(catOf(t.cat).color);
   });
-
-  const handleReceiptFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) { showToast('画像ファイルを選択してください'); return; }
-    setReceiptState('reading');
-    setReceiptPreview(URL.createObjectURL(file));
-    try {
-      const base64 = await fileToBase64(file);
-      const res = await fetch('/api/read-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.date) setDate(data.date);
-      if (data.amount) setAmount(String(data.amount));
-      if (data.memo) setMemo(data.memo);
-      if (data.cat && CATS.find(c => c.name === data.cat)) setCat(data.cat);
-      setReceiptState('done');
-      showToast('読み取り完了。内容を確認してください');
-    } catch {
-      setReceiptState('error');
-      showToast('読み取りに失敗しました。手動で入力してください');
-    }
-  };
-
-  const handleMultiReceiptFiles = async (files: FileList) => {
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (!imageFiles.length) { showToast('画像ファイルを選択してください'); return; }
-    showToast(`${imageFiles.length}枚を読み取り中...`);
-    const results: MultiItem[] = [];
-    for (const file of imageFiles) {
-      try {
-        const base64 = await fileToBase64(file);
-        const res = await fetch('/api/read-receipt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
-        });
-        const data = await res.json();
-        results.push({
-          id: Date.now() + Math.random(),
-          date: data.date || todayStr(),
-          cat: (data.cat && CATS.find(c => c.name === data.cat)) ? data.cat : CATS[0].name,
-          amount: data.amount ? String(data.amount) : '',
-          memo: data.memo || '',
-        });
-      } catch {
-        results.push({ id: Date.now() + Math.random(), date: todayStr(), cat: CATS[0].name, amount: '', memo: '' });
-      }
-    }
-    setMultiItems(results);
-    showToast(`${results.length}枚を読み取りました。内容を確認してください`);
-  };
-
-  const handleSingle = () => {
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) { showToast('金額を入力してください'); return; }
-    addTx({ amount: amt, memo, cat, date: date || todayStr() });
-    setAmount(''); setMemo(''); setReceiptState('idle'); setReceiptPreview(null);
-  };
-
-  const handleMulti = () => {
-    const valid = multiItems.filter(m => parseFloat(m.amount) > 0);
-    if (!valid.length) { showToast('金額を入力してください'); return; }
-    addTxBulk(valid.map(m => ({ amount: parseFloat(m.amount), memo: m.memo, cat: m.cat, date: m.date || todayStr() })));
-    setMultiItems([{ id: Date.now(), date: todayStr(), cat: CATS[0].name, amount: '', memo: '' }]);
-  };
-
-  const addMultiItem = () => setMultiItems(prev => [...prev, { id: Date.now(), date: todayStr(), cat: CATS[0].name, amount: '', memo: '' }]);
-  const removeMultiItem = (id: number) => setMultiItems(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev);
-  const updateMulti = (id: number, key: keyof MultiItem, val: string) =>
-    setMultiItems(prev => prev.map(m => m.id === id ? { ...m, [key]: val } : m));
-
-  const sorted = [...monthTxs].sort((a, b) => b.date.localeCompare(a.date));
+  const now = new Date();
+  const isCur = now.getFullYear() === cy && now.getMonth() + 1 === cm;
+  const todayD = now.getDate();
 
   return (
     <>
       <MonthRow cy={cy} cm={cm} moveMonth={moveMonth} />
-
-      <div className="input-tog">
-        <button className={`it-btn${mode === 'multi' ? ' on' : ''}`} onClick={() => setMode('multi')}>一括入力</button>
-        <button className={`it-btn${mode === 'single' ? ' on' : ''}`} onClick={() => setMode('single')}>1件入力</button>
-      </div>
-
-      <div className="sec" style={{ marginBottom: 14 }}>
-        {mode === 'single' ? (
-          <>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptFile(f); e.target.value = ''; }} />
-
-            <div
-              className="upload-area"
-              style={receiptState === 'done' ? { borderColor: '#2563eb', background: '#f0f4ff' } : receiptState === 'reading' ? { opacity: .7 } : {}}
-              onClick={() => receiptState !== 'reading' && fileInputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleReceiptFile(f); }}
-            >
-              {receiptPreview ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={receiptPreview} alt="レシート" style={{ width: 56, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                  <div style={{ textAlign: 'left' }}>
-                    {receiptState === 'reading' && <div className="upload-title">AIが読み取り中...</div>}
-                    {receiptState === 'done'    && <div className="upload-title" style={{ color: '#2563eb' }}>読み取り完了</div>}
-                    {receiptState === 'error'   && <div className="upload-title" style={{ color: '#ef4444' }}>読み取り失敗</div>}
-                    <div className="upload-sub">別のレシートに変えるには再度タップ</div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="upload-icon">
-                    <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-                  </div>
-                  <div className="upload-title">レシートをアップロード</div>
-                  <div className="upload-sub">タップまたはドラッグ＆ドロップでAIが自動入力</div>
-                </>
-              )}
-            </div>
-
-            <div className="form-sec-title">支出を追加</div>
-            <label className="flbl">日付</label>
-            <input className="finput" type="date" value={date} onChange={e => setDate(e.target.value)} />
-            <label className="flbl">カテゴリ</label>
-            <select className="finput" value={cat} onChange={e => setCat(e.target.value)}>
-              {CATS.map(c => <option key={c.name}>{c.name}</option>)}
-            </select>
-            <label className="flbl">金額（円）</label>
-            <input className="finput" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" />
-            <label className="flbl">メモ（任意）</label>
-            <input className="finput" type="text" value={memo} onChange={e => setMemo(e.target.value)} placeholder="例）イオン、ランチ等" />
-            <button className="submit-btn" onClick={handleSingle}>+ 追加する</button>
-          </>
-        ) : (
-          <>
-            <input ref={multiFileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-              onChange={e => { if (e.target.files?.length) handleMultiReceiptFiles(e.target.files); e.target.value = ''; }} />
-
-            <div className="upload-area"
-              onClick={() => multiFileInputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) handleMultiReceiptFiles(e.dataTransfer.files); }}
-            >
-              <div className="upload-icon">
-                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              </div>
-              <div className="upload-title">複数のレシートを一度に選択</div>
-              <div className="upload-sub">タップして複数選択 / ドラッグ＆ドロップでAIが自動入力</div>
-            </div>
-
-            <div className="sec-hd">
-              <span className="form-sec-title">支出リスト</span>
-              <span className="sec-note">{multiItems.filter(m => parseFloat(m.amount) > 0).length}件入力済み</span>
-            </div>
-            {multiItems.map((item, i) => (
-              <div key={item.id} className="multi-item">
-                <div className="multi-item-hd">
-                  <span className="multi-no">#{i + 1}</span>
-                  <button className="multi-close" onClick={() => removeMultiItem(item.id)}>✕</button>
-                </div>
-                <div className="frow2">
-                  <div>
-                    <label className="flbl">日付</label>
-                    <input className="finput" type="date" value={item.date} onChange={e => updateMulti(item.id, 'date', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="flbl">カテゴリ</label>
-                    <select className="finput" value={item.cat} onChange={e => updateMulti(item.id, 'cat', e.target.value)}>
-                      {CATS.map(c => <option key={c.name}>{c.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="frow2" style={{ marginTop: 8 }}>
-                  <div>
-                    <label className="flbl">金額（円）</label>
-                    <input className="finput" type="number" value={item.amount} onChange={e => updateMulti(item.id, 'amount', e.target.value)} placeholder="0" />
-                  </div>
-                  <div>
-                    <label className="flbl">メモ</label>
-                    <input className="finput" type="text" value={item.memo} onChange={e => updateMulti(item.id, 'memo', e.target.value)} placeholder="店名など" />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button className="add-item-btn" onClick={addMultiItem}>+ 項目を手動追加</button>
-            <button className="submit-btn" onClick={handleMulti}>まとめて追加する</button>
-          </>
-        )}
+      <div className="sec">
+        <div className="sec-hd">
+          <span className="sec-title">カレンダー</span>
+          <span className="sec-note">今月合計 {fmt(exp)}</span>
+        </div>
+        <div className="cal-wrap">
+          <table className="cal">
+            <thead>
+              <tr>{['日','月','火','水','木','金','土'].map((d,i)=><th key={d} className={i===0?'sun':i===6?'sat':''}>{d}</th>)}</tr>
+            </thead>
+            <tbody>
+              {(()=>{
+                const trs: React.ReactNode[]=[];
+                let dayNum=1-startDay;
+                for(let week=0;week<6;week++){
+                  const tds: React.ReactNode[]=[];
+                  for(let dow=0;dow<7;dow++){
+                    const d=dayNum;
+                    if(d<1||d>last.getDate()){tds.push(<td key={`${week}-${dow}`}/>);}
+                    else{
+                      const info=byDay[d];
+                      const cls=['cal-day',dow===0?'sun':dow===6?'sat':'',isCur&&d===todayD?'today-d':'',info?'has-tx':''].filter(Boolean).join(' ');
+                      tds.push(<td key={`${week}-${dow}`}><div className="cal-cell"><div className={cls}>{d}</div>{info&&<><div className="cal-amt">{fmt(info.total)}</div><div className="cal-dots">{info.cats.slice(0,3).map((c,i2)=><div key={i2} className="cal-dot" style={{background:c}}/>)}</div></>}</div></td>);
+                    }
+                    dayNum++;
+                  }
+                  if(dayNum-7<=last.getDate())trs.push(<tr key={week}>{tds}</tr>);
+                }
+                return trs;
+              })()}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="sec">
-        <div className="sec-hd">
-          <span className="sec-title">{cy}年{cm}月の入力一覧</span>
-        </div>
-        {sorted.length === 0 ? (
-          <div className="empty-msg">取引がありません</div>
-        ) : sorted.map(t => {
-          const c = catOf(t.cat);
-          const d = new Date(t.date);
-          const ds = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-          return (
-            <div key={t.id} className="tx-item">
-              <div className="cat-dot" style={{ background: c.color }} />
-              <div className="tx-info">
-                <div className="tx-name">{t.memo || t.cat}</div>
-                <div className="tx-meta">{ds} <span style={{ color: c.color, fontWeight: 600 }}>{t.cat}</span></div>
+        <div className="sec-hd"><span className="sec-title">カテゴリ別集計</span><span className="sec-note">タップで内訳を表示</span></div>
+        {CATS.filter(c=>cm2[c.name]).length===0
+          ?<div className="empty-msg">支出データなし</div>
+          :CATS.filter(c=>cm2[c.name]).map(c=>{
+            const sp=cm2[c.name];
+            const pct=exp?Math.min(100,Math.round(sp/exp*100)):0;
+            const isOpen=openCat===c.name;
+            const catTxs=[...monthTxs].filter(t=>t.cat===c.name).sort((a,b)=>b.date.localeCompare(a.date));
+            return(
+              <div key={c.name}>
+                <div className="cat-total-row" style={{cursor:'pointer',userSelect:'none'}} onClick={()=>setOpenCat(isOpen?null:c.name)}>
+                  <div className="cat-dot" style={{background:c.color}}/>
+                  <div className="cat-name">{c.name}</div>
+                  <div className="cat-total-bar"><div className="bar-bg"><div className="bar-fill" style={{width:`${pct}%`,background:c.color}}/></div></div>
+                  <div className="cat-val">{fmt(sp)}</div>
+                  <div style={{marginLeft:8,color:'#9ca3af',fontSize:11,transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform .2s'}}>▼</div>
+                </div>
+                {isOpen&&(
+                  <div style={{background:'#f9fafb',borderRadius:8,margin:'0 0 4px',padding:'4px 0',border:'1px solid #f3f4f6'}}>
+                    {catTxs.map(t=>{
+                      const d=new Date(t.date);
+                      const ds=`${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+                      return(
+                        <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',borderBottom:'1px solid #f3f4f6'}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.memo||t.cat}</div>
+                            <div style={{fontSize:11,color:'#9ca3af',marginTop:1}}>{ds}</div>
+                          </div>
+                          <div style={{fontSize:13,fontWeight:700,color:'#1a1a2e',whiteSpace:'nowrap'}}>{fmt(t.amount)}</div>
+                          <button
+                            style={{width:28,height:28,border:'1px solid #e5e7eb',borderRadius:6,background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#9ca3af',fontSize:13,flexShrink:0,marginLeft:4}}
+                            onClick={e=>{e.stopPropagation();if(confirm('この取引を削除しますか？'))delTx(t.id);}}
+                          >✕</button>
+                        </div>
+                      );
+                    })}
+                    <div style={{padding:'8px 14px',fontSize:12,color:'#6b7280',textAlign:'right',fontWeight:600}}>小計 {fmt(sp)}</div>
+                  </div>
+                )}
               </div>
-              <div className="tx-amt">{fmt(t.amount)}</div>
-              <button className="icon-btn del" onClick={() => { if (confirm('この取引を削除しますか？')) delTx(t.id); }}>✕</button>
-            </div>
-          );
-        })}
+            );
+          })}
+        <div className="total-row"><span className="total-lbl">合計</span><span className="total-amt">{fmt(exp)}</span></div>
       </div>
     </>
   );
