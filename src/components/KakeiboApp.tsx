@@ -77,7 +77,7 @@ export default function KakeiboApp() {
     return d.getFullYear() === cy && d.getMonth() + 1 === cm && !t.isIncome;
   });
 
-  const shared = { cy, cm, moveMonth, monthTxs, txs, budgets, showToast };
+  const shared = { cy, cm, moveMonth, monthTxs, txs, budgets, showToast, delTx };
 
   if (!txsLoaded || !budgetsLoaded) return null;
 
@@ -116,8 +116,8 @@ export default function KakeiboApp() {
       {/* Pages */}
       <main className="pg">
         {activeTab === 'summary' && <SummaryTab {...shared} />}
-        {activeTab === 'input'   && <InputTab {...shared} addTx={addTx} addTxBulk={addTxBulk} delTx={delTx} />}
-        {activeTab === 'history' && <HistoryTab {...shared} delTx={delTx} />}
+        {activeTab === 'input'   && <InputTab {...shared} addTx={addTx} addTxBulk={addTxBulk} />}
+        {activeTab === 'history' && <HistoryTab {...shared} />}
         {activeTab === 'budget'  && <BudgetTab {...shared} saveBudgets={saveBudgets} />}
         {activeTab === 'trend'   && <TrendTab {...shared} />}
         {activeTab === 'report'  && <ReportTab {...shared} />}
